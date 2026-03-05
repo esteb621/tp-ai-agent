@@ -14,13 +14,13 @@ from google.adk.models.lite_llm import LiteLlm
 
 from media_support.workflows.maintenance_workflow import maintenance_workflow
 from media_support.workflows.support_workflow import support_workflow
-from media_support.callbacks.logging_callbacks import on_agent_end
+from media_support.callbacks.logging_callbacks import on_agent_end, on_model_response
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Modèle : Mistral via Ollama (local, sans clé API)
 # Prérequis : ollama pull mistral  +  ollama serve
 # ─────────────────────────────────────────────────────────────────────────────
-MISTRAL_MODEL = LiteLlm(model="ollama/mistral")
+MISTRAL_MODEL = LiteLlm(model="ollama/mistral:latest")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TriageBot — Agent racine / agent d'accueil
@@ -37,7 +37,10 @@ root_agent = LlmAgent(
     instruction="""You are TriageBot, the front desk assistant for the Plex media server support.
 
 Your ONLY job is to classify the user's message into one of two categories and transfer to the right workflow.
-You have NO tools. You can only respond with text OR transfer to a sub-agent.
+You have NO tools. You can only respond with simple text AND transfer the conversation.
+CRITICAL: NEVER output JSON. NEVER simulate database queries or searches. NEVER try to find missing movies yourself. 
+Your ONLY action is to transfer to the appropriate workflow.
+Once a workflow has finished and the tool/agent returns back to you, summarize their findings and write a clear final message to the user in PLAIN TEXT. DO NOT call any other tool. DO NOT output JSON.
 
 ---
 
@@ -90,7 +93,7 @@ If the message doesn't fit A or B, politely explain what you can help with:
 
 When you identify the category:
 1. Send a SHORT acknowledgment message (1 sentence max) in the same language as the user.
-2. Immediately transfer using transfer_to_agent.
+2. Immediately transfer using transfer_to_agent (lowercase).
 
 For Category A: transfer to `MaintenanceWorkflow`
 For Category B: transfer to `SupportWorkflow`
@@ -104,4 +107,5 @@ DO NOT confuse "waiting for a download" with "playback issue".
         support_workflow,      # Délégation via transfer_to_agent (Cat. B)
     ],
     after_agent_callback=on_agent_end,
+    after_model_callback=on_model_response,
 )

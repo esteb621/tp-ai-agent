@@ -14,6 +14,7 @@ from sonarr.api.command_api import CommandApi as SonarrCommandApi
 from sonarr.api.series_lookup_api import SeriesLookupApi
 from sonarr.api.missing_api import MissingApi as SonarrMissingApi
 from sonarr.api.release_api import ReleaseApi as SonarrReleaseApi
+from sonarr.api.series_api import SeriesApi as SonarrSeriesApi
 from sonarr.models.command_resource import CommandResource as SonarrCommandResource
 
 import radarr
@@ -39,93 +40,50 @@ RADARR_CONFIG.api_key['apikey'] = RADARR_API_KEY
 RADARR_CONFIG.api_key['X-Api-Key'] = RADARR_API_KEY
 
 
-def get_stuck_downloads(media_type: str = "all", media_name: str | None = None) -> dict:
+def get_stuck_downloads(media_type: str = "all") -> dict:
     """
     Récupère les médias bloqués (Queue) ou manquants (Wanted) depuis Sonarr/Radarr.
     Supporte le filtrage par regex sur le nom du média.
     """
-    print(f"DEBUG: get_stuck_downloads - media_type={media_type}, media_name={media_name}")
+    print(f"DEBUG: get_stuck_downloads - media_type={media_type}")
     stuck = []
     has_errors = False
     error_messages = []
     
-    # Prépare le regex si media_name est fourni
-    name_regex: Optional[re.Pattern] = None
-    target_series_ids = set()
-    target_movie_ids = set()
-
-    if media_name:
-        try:
-            name_regex = re.compile(media_name, re.IGNORECASE)
-        except Exception:
-            name_regex = re.compile(re.escape(media_name), re.IGNORECASE)
-
-        # -- Résolution par ID en vérifiant les titres alternatifs (alias FR, etc.) --
-        if media_type in ["all", "serie"] and SONARR_API_KEY:
-            try:
-                from sonarr.api.series_api import SeriesApi as SonarrSeriesApi
-                with sonarr.ApiClient(SONARR_CONFIG) as api_client:
-                    series_api = SonarrSeriesApi(api_client)
-                    all_series = series_api.list_series()
-                    for s in all_series:
-                        match_found = False
-                        s_title = getattr(s, "title", "") or ""
-                        
-                        if name_regex.search(s_title):
-                            match_found = True
-                        else:
-                            alt_titles = getattr(s, "alternate_titles", [])
-                            for alt in alt_titles:
-                                alt_title = getattr(alt, "title", "") or ""
-                                if name_regex.search(alt_title):
-                                    match_found = True
-                                    break
-                                    
-                        if match_found and hasattr(s, "id") and s.id:
-                            target_series_ids.add(s.id)
-            except Exception as e:
-                print(f"DEBUG: Sonarr title resolution error - {e}")
-
-        if media_type in ["all", "film"] and RADARR_API_KEY:
-            try:
-                from radarr.api.movie_api import MovieApi as RadarrMovieApi
-                with radarr.ApiClient(RADARR_CONFIG) as api_client:
-                    movie_api = RadarrMovieApi(api_client)
-                    all_movies = movie_api.list_movie()
-                    for m in all_movies:
-                        match_found = False
-                        m_title = getattr(m, "title", "") or ""
-                        
-                        if name_regex.search(m_title):
-                            match_found = True
-                        else:
-                            alt_titles = getattr(m, "alternate_titles", [])
-                            for alt in alt_titles:
-                                alt_title = getattr(alt, "title", "") or ""
-                                if name_regex.search(alt_title):
-                                    match_found = True
-                                    break
-                                    
-                        if match_found and hasattr(m, "id") and m.id:
-                            target_movie_ids.add(m.id)
-            except Exception as e:
-                print(f"DEBUG: Radarr title resolution error - {e}")
+    # Plus de filtrage par media_name, on récupère tout.
 
     # --- Section Sonarr (Series/Episodes) ---
     if media_type in ["all", "serie"] and SONARR_API_KEY:
         try:
             with sonarr.ApiClient(SONARR_CONFIG) as api_client:
+                # Cache for series titles to avoid spamming the API
+                series_title_cache = {}
+                series_api = SonarrSeriesApi(api_client)
+
                 # 1. Stuck in Queue
                 queue_api = SonarrQueueApi(api_client)
                 queue_page = queue_api.get_queue(page_size=100)
+                print(queue_page[0] if getattr(queue_page, "records", []) else "Queue empty")
+                
                 for item in getattr(queue_page, "records", []):
-                    title = getattr(item, "title", "Unknown")
                     series_id = getattr(item, "series_id", None)
                     
-                    if media_name:
-                        # Match par ID exact de la série OU via le nom du fichier courant
-                        if (series_id not in target_series_ids) and not (name_regex and name_regex.search(title)):
-                            continue
+                    series_title = "Unknown Series"
+                    if series_id:
+                        if series_id not in series_title_cache:
+                            try:
+                                series_obj = series_api.get_series_by_id(id=series_id)
+                                series_title_cache[series_id] = getattr(series_obj, "title", "Unknown Series")
+                            except Exception as e:
+                                print(f"Error fetching series {series_id}: {e}")
+                                series_title_cache[series_id] = "Unknown Series"
+                        series_title = series_title_cache.get(series_id, "Unknown Series")
+                        
+                    episode_obj = getattr(item, "episode", None)
+                    season_num = getattr(episode_obj, "season_number", 0) if episode_obj else 0
+                    episode_num = getattr(episode_obj, "episode_number", 0) if episode_obj else 0
+                    title = f"{series_title} - S{season_num:02}E{episode_num:02}"
+
                     
                     if getattr(item, "status", "").lower() not in ["completed", "downloading", "importing"]:
                         stuck.append({
@@ -137,7 +95,6 @@ def get_stuck_downloads(media_type: str = "all", media_name: str | None = None) 
                             "status": getattr(item, "status", "unknown"),
                             "tracked_status": getattr(item, "tracked_download_state", "warning"),
                             "status_messages": [str(m) for m in getattr(item, "status_messages", [])],
-                            "discord_id": "test_discord_id_123",
                             "source": "queue"
                         })
 
@@ -145,16 +102,22 @@ def get_stuck_downloads(media_type: str = "all", media_name: str | None = None) 
                 missing_api = SonarrMissingApi(api_client)
                 missing_page = missing_api.get_wanted_missing(page_size=50)
                 for record in getattr(missing_page, "records", []):
-                    series_title = "Unknown Series"
                     series_id = getattr(record, "series_id", None)
                     
-                    if hasattr(record, "series"):
-                        series_title = getattr(record.series, "title", "Unknown")
+                    series_title = "Unknown Series"
+                    if series_id:
+                        if series_id not in series_title_cache:
+                            try:
+                                series_obj = series_api.get_series_by_id(id=series_id)
+                                series_title_cache[series_id] = getattr(series_obj, "title", "Unknown Series")
+                            except Exception as e:
+                                print(f"Error fetching series {series_id}: {e}")
+                                series_title_cache[series_id] = "Unknown Series"
+                        series_title = series_title_cache.get(series_id, "Unknown Series")
                     
-                    if media_name:
-                        if (series_id not in target_series_ids) and not (name_regex and name_regex.search(series_title)):
-                            continue
-                        
+                    if hasattr(record, "series") and getattr(record.series, "title", None):
+                        series_title = getattr(record.series, "title")
+
                     stuck.append({
                         "id": getattr(record, "id", None),
                         "media_type": "serie",
@@ -164,7 +127,6 @@ def get_stuck_downloads(media_type: str = "all", media_name: str | None = None) 
                         "status": "Missing",
                         "tracked_status": "Wanted",
                         "status_messages": ["Episode is missing and not in queue"],
-                        "discord_id": "test_discord_id_123",
                         "source": "wanted"
                     })
         except Exception as e:
@@ -181,10 +143,7 @@ def get_stuck_downloads(media_type: str = "all", media_name: str | None = None) 
                 for item in getattr(queue_page, "records", []):
                     title = getattr(item, "title", "Unknown")
                     movie_id = getattr(item, "movie_id", None)
-                    
-                    if media_name:
-                        if (movie_id not in target_movie_ids) and not (name_regex and name_regex.search(title)):
-                            continue
+
 
                     if getattr(item, "status", "").lower() not in ["completed", "downloading", "importing"]:
                         stuck.append({
@@ -195,7 +154,6 @@ def get_stuck_downloads(media_type: str = "all", media_name: str | None = None) 
                             "status": getattr(item, "status", "unknown"),
                             "tracked_status": getattr(item, "tracked_download_state", "warning"),
                             "status_messages": [str(m) for m in getattr(item, "status_messages", [])],
-                            "discord_id": "test_discord_id_radarr_456",
                             "source": "queue"
                         })
 
@@ -205,10 +163,7 @@ def get_stuck_downloads(media_type: str = "all", media_name: str | None = None) 
                 for record in getattr(missing_page, "records", []):
                     movie_title = getattr(record, "title", "Unknown Movie")
                     movie_id = getattr(record, "id", None)
-                    
-                    if media_name:
-                        if (movie_id not in target_movie_ids) and not (name_regex and name_regex.search(movie_title)):
-                            continue
+
 
                     stuck.append({
                         "id": getattr(record, "id", None),
@@ -218,7 +173,6 @@ def get_stuck_downloads(media_type: str = "all", media_name: str | None = None) 
                         "status": "Missing",
                         "tracked_status": "Wanted",
                         "status_messages": ["Movie is missing and not in queue"],
-                        "discord_id": "test_discord_id_radarr_456",
                         "source": "wanted"
                     })
         except Exception as e:

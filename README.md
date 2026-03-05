@@ -7,7 +7,7 @@ L'objectif est d'offrir une assistance technique automatisée : lorsqu'un utilis
 
 ---
 
-## 🏗️ La Stack Technique (Comprendre les briques)
+## 🏗️ Les outils impliqués (en dehors de ADK)
 
 - **Plex** : Il s'agit du serveur multimédia personnel. Il organise les films et séries et permet de les diffuser (streamer) vers n'importe quel appareil (TV, Smartphone, PC).
 - **Radarr** : Un gestionnaire de bibliothèques de films. Il surveille les indexeurs (trackers) pour trouver les films demandés de la meilleure qualité, et les envoie automatiquement aux clients de téléchargement (BitTorrent / Usenet).
@@ -20,11 +20,11 @@ L'objectif est d'offrir une assistance technique automatisée : lorsqu'un utilis
 
 L'architecture repose sur plusieurs agents ayant chacun un rôle très précis :
 
-### 1. **TriageBot** (L'Aiguilleur)
+### 1. **TriageBot**
 
 - **Rôle** : Point d'entrée principal. Il analyse la demande de l'utilisateur et détermine s'il s'agit d'une demande de support (problème de lecture) ou d'une demande de maintenance (média manquant ou téléchargement bloqué). Il transmet ensuite la requête au bon workflow.
 
-### 2. **ArrBot** (L'Agent de Maintenance)
+### 2. **ArrBot**
 
 - **Rôle** : Gère tout ce qui concerne Radarr et Sonarr.
 - **Outils utilisés** :
@@ -33,7 +33,7 @@ L'architecture repose sur plusieurs agents ayant chacun un rôle très précis :
   - `download_release` : Lance le téléchargement d'une _release_ spécifique.
   - `search_and_replace_release` : Lance la commande automatique de l'API pour chercher une meilleure source.
 
-### 3. **PlexCheckBot / ServerCheckBot** (L'Agent Support)
+### 3. **PlexCheckBot / ServerCheckBot**
 
 - **Rôle** : Dans le workflow de support, son objectif est de vérifier ce qui se passe sur Plex en temps réel. Si l'utilisateur se plaint que "ça lag", il vérifie.
 - **Outils utilisés** :
@@ -85,6 +85,12 @@ Le projet tourne localement et utilise **Ollama** pour interroger les modèles d
 
    ```bash
    pip install -r requirements.txt
+   ```
+
+   ou
+
+   ```bash
+   uv sync
    ```
 
 4. **Configurer les variables d'environnement** :

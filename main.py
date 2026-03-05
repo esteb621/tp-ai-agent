@@ -69,7 +69,7 @@ async def run_demo_maintenance() -> None:
     print(f"✅ Runner instancié avec l'agent racine : {root_agent.name}\n")
 
     # ── 4. Définition du message de déclenchement ──────────────────────────
-    demo_message = "Lance la routine de maintenance"
+    demo_message = "Pourquoi Scream 7 ne s'est pas telechargé ?"
     print(f"📨 Envoi de la commande : '{demo_message}'")
     print("-" * 70)
 
@@ -181,30 +181,19 @@ def main() -> None:
     """
     Point d'entrée principal du script de démonstration.
 
-    Lance les deux scénarios de démonstration :
-      1. Mode Proactif (maintenance)
-      2. Mode Réactif (support utilisateur)
+    Lance le scénario de démonstration modifié pour tester le correctif.
     """
-    # Vérification qu'Ollama est accessible (tous les modèles tournent en local)
-    from media_support.tools.arr_tools import get_stuck_downloads
-    test =get_stuck_downloads(media_name="Attaque des titans")
-    print(test)
-    # import urllib.request
-    # try:
-    #     urllib.request.urlopen("http://localhost:11434", timeout=2)
-    #     print("✅ Ollama détecté sur localhost:11434 — modèles Mistral + Llama 3.2 disponibles\n")
-    # except Exception:
-    #     print("⚠️  ATTENTION : Ollama n'est pas démarré ou inaccessible sur localhost:11434 !")
-    #     print("   → Lancez Ollama avec : ollama serve")
-    #     print("   → Vérifiez les modèles : ollama pull mistral && ollama pull llama3.2\n")
+    import urllib.request
+    try:
+        urllib.request.urlopen("http://localhost:11434", timeout=2)
+        print("✅ Ollama détecté sur localhost:11434 — modèles disponibles\n")
+    except Exception:
+        print("⚠️  ATTENTION : Ollama n'est pas démarré ou inaccessible sur localhost:11434 !")
+        print("   → Lancez Ollama avec : ollama serve")
 
-    # # Lancement de la démo maintenance (mode proactif)
-    # print("\n🚀 Lancement du scénario 1 : Routine de maintenance proactive")
-    # asyncio.run(run_demo_maintenance())
-
-    # # Lancement de la démo support (mode réactif)
-    # print("\n🚀 Lancement du scénario 2 : Support réactif (problème de lecture)")
-    # asyncio.run(run_demo_support())
+    # Lancement de la démo maintenance modifiée (mode proactif)
+    print("\n🚀 Lancement du test avec la question en français")
+    asyncio.run(run_demo_maintenance())
 
 
 if __name__ == "__main__":

@@ -16,7 +16,6 @@ Déclenché par : transfer_to_agent depuis TriageBot sur commande "maintenance".
 from google.adk.agents import SequentialAgent
 
 from media_support.agents.arr_bot import arr_bot
-from media_support.agents.comms_bot import comms_bot
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SequentialAgent : Workflow de maintenance
@@ -31,7 +30,6 @@ maintenance_workflow = SequentialAgent(
         "puis CommsBot (notification Discord des utilisateurs concernés)."
     ),
     sub_agents=[
-        arr_bot,    # Étape 1 : Analyse et réparation — génère maintenance_report
-        comms_bot,  # Étape 2 : Communication Discord — lit maintenance_report depuis le state
+        arr_bot,    # Étape 1 : Analyse et réparation — génère maintenance_report et appelle comms_bot
     ],
 )

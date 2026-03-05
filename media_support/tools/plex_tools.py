@@ -10,8 +10,18 @@ import requests
 TAUTULLI_URL = os.getenv("TAUTULLI_URL", "http://localhost:8181")
 TAUTULLI_API_KEY = os.getenv("TAUTULLI_API_KEY", "")
 
+TAUTULLI_API_KEY = os.getenv("TAUTULLI_API_KEY", "")
 
-def check_plex_playback(user: str) -> dict:
+def response(text: str) -> str:
+    """
+    Outil de réponse. Obligatoire pour retourner le diagnostic final.
+    
+    Args:
+        text (str): Le contenu de ton message de réponse.
+    """
+    return text
+
+def check_plex_playback(user: str = "utilisateur_plex") -> dict:
     """
     Vérifie l'état du flux de lecture Plex pour un utilisateur donné via Tautulli.
 

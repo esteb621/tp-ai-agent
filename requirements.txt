@@ -1,0 +1,5 @@
+google-adk[extensions]
+python-dotenv
+radarr-py
+requests
+sonarr-py

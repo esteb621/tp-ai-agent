@@ -15,7 +15,7 @@ from typing import Any, Optional
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.tools.base_tool import BaseTool
 from google.adk.tools.tool_context import ToolContext
-
+from google.adk.agents.llm_agent import LlmResponse
 
 def on_tool_start(
     tool: BaseTool,
@@ -49,9 +49,7 @@ def on_tool_start(
     return None
 
 
-def on_agent_end(
-    callback_context: CallbackContext,
-) -> None:
+def on_agent_end(callback_context: CallbackContext) -> None:
     """
     Callback déclenché APRÈS la fin d'un agent LLM (after_agent_callback).
 
@@ -74,3 +72,10 @@ def on_agent_end(
 
     # Retourner None = ne pas intercept la réponse de l'agent
     return None
+
+def on_model_response(llm_response: LlmResponse, callback_context: CallbackContext):
+    for part in llm_response.content.parts:
+        if hasattr(part, "thought") and part.thought:
+            print(f"🧠 [THINKING]: {part.thought}")
+        if hasattr(part, "text") and part.text:
+            print(f"💬 [TEXT]: {part.text}")
