@@ -1,0 +1,161 @@
+╔═════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                     🎯 MATRICE DE COUVERTURE — ÉTAT DES CAS D'USAGE                           ║
+╚═════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ CAS N°1 : TÉLÉCHARGEMENT BLOQUÉ                                                       ✅ 85%   │
+├─────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                  │
+│  Flux: User → TriageBot → MaintenanceWorkflow → ArrBot → CommsBot → Discord DM                │
+│                                                                                                  │
+│  Composants:                                  Statut:                                          │
+│  ├─ TriageBot (Classification A/B)            ✅ Couvert                                       │
+│  ├─ MaintenanceWorkflow (Sequential)          ✅ Couvert                                       │
+│  ├─ ArrBot (Technicien)                       ✅ Couvert                                       │
+│  ├─ get_stuck_downloads()                     ✅ Couvert                                       │
+│  ├─ search_and_replace_release()              ✅ Couvert                                       │
+│  └─ CommsBot (AgentTool + Discord)            ✅ Couvert                                       │
+│                                                                                                  │
+│  Action: ✓ AUCUNE — Fonctionne déjà                                                           │
+│  Amélioration optionnelle: check_torrent_health() (vérifier seeders en temps réel)             │
+│                                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ CAS N°2 : PROBLÈME DE LECTURE (BUFFERING/TRANSCODAGE)                               ✅ 90%   │
+├─────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                  │
+│  Flux: User → TriageBot → SupportWorkflow (Parallel) → PlexCheckBot & ServerCheckBot          │
+│                                                                                                  │
+│  Composants:                                  Statut:                                          │
+│  ├─ TriageBot (Détection keywords)            ✅ Couvert                                       │
+│  ├─ SupportWorkflow (Parallel)                ✅ Couvert                                       │
+│  ├─ PlexCheckBot                              ✅ Couvert                                       │
+│  ├─ check_plex_playback(user)                 ✅ Couvert                                       │
+│  └─ ServerCheckBot (Diagnostic serveur)       ✅ Couvert                                       │
+│                                                                                                  │
+│  Action: ✓ AUCUNE — Fonctionne déjà                                                           │
+│  Amélioration UX: Extraire username du contexte message (optionnel)                            │
+│                                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ CAS N°3 : REQUÊTE DÉRAISONNABLE (AVANT OVERSEERR, VÉRIFIER ESPACE DISQUE)           ⚠️ 30%   │
+├─────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                  │
+│  Flux: User: "One Piece intégrale 4K ?"                                                        │
+│        → TriageBot (CATEGORY D: avant Overseerr)                                               │
+│        → FeasibilityWorkflow (Parallel)                                                        │
+│           ├─ EstimateBot: "One Piece 4K = 2.5 To"                                             │
+│           └─ StorageBot: "Disque libre = 800 Go"                                              │
+│        → TriageBot: "Acceptez 1080p (400 Go) ?"                                                │
+│        → Si OUI: MaintenanceWorkflow → Overseerr + qualité réduite                             │
+│                                                                                                  │
+│  Composants:                                  Statut:                                          │
+│  ├─ TriageBot (CATEGORY D)                    ❌ À CRÉER (nouvelle instruction)               │
+│  ├─ FeasibilityWorkflow                       ❌ À CRÉER (ParallelAgent)                      │
+│  ├─ EstimateBot                               ❌ À CRÉER (agent)                              │
+│  ├─ StorageBot                                ❌ À CRÉER (agent)                              │
+│  ├─ estimate_media_size()                     ❌ À CRÉER (tool)                               │
+│  ├─ check_disk_space()                        ❌ À CRÉER (tool)                               │
+│  └─ Logique multi-turn (acceptation)          ⚠️  Partiel (StateStore limité)                │
+│                                                                                                  │
+│  Action: 🔴 CRITIQUE — Ajouter 2 agents + 2 tools + 1 workflow                               │
+│  Priorité: 3️⃣  (4-5 heures d'implémentation)                                                  │
+│                                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ CAS N°4 : DÉSYNCHRONISATION OVERSEERR/PLEX (FICHIER LÀ, MAIS PAS VISIBLE)           ⚠️ 70%   │
+├─────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                  │
+│  Flux: User: "Deadpool est dispo mais pas visible sur Plex"                                    │
+│        → TriageBot → ArrBot                                                                    │
+│        → check_file_on_disk("Deadpool")     ✓ Fichier trouvé                                  │
+│        → trigger_plex_scan("Films")          Actualisation lancée                             │
+│        → CommsBot: "Actualisation Plex (1-2 min), redémarre ton app"                          │
+│                                                                                                  │
+│  Composants:                                  Statut:                                          │
+│  ├─ TriageBot (Détection)                     ✅ Couvert                                       │
+│  ├─ ArrBot (Orchestration)                    ✅ Couvert                                       │
+│  ├─ check_file_on_disk()                      ❌ À CRÉER (tool)                               │
+│  ├─ trigger_plex_scan()                       ❌ À CRÉER (tool)                               │
+│  └─ CommsBot (Notification)                   ✅ Couvert                                       │
+│                                                                                                  │
+│  Action: 🟡 PRIORITAIRE — Ajouter 2 outils simples                                            │
+│  Priorité: 1️⃣  (2-3 heures d'implémentation)                                                  │
+│                                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ CAS N°5 : LANGUE/SOUS-TITRES MANQUANTS (VO SANS SUBS)                                ⚠️ 60%   │
+├─────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                  │
+│  Flux: User: "The Last of Us en anglais sans subs français !"                                  │
+│        → TriageBot → ArrBot                                                                    │
+│        → check_audio_subs("The Last of Us")  VO uniquement, pas de subs                       │
+│        → if episode récent (<2h): "C'est normal, diffusé il y a 2h"                           │
+│        → trigger_bazarr_search()              Recherche lancée                                │
+│        → CommsBot: "Subs en recherche (5-10 min), relance après"                              │
+│                                                                                                  │
+│  Composants:                                  Statut:                                          │
+│  ├─ TriageBot (Détection)                     ✅ Couvert (via PlexCheckBot)                   │
+│  ├─ ArrBot (Orchestration)                    ✅ Couvert                                       │
+│  ├─ check_audio_subs()                        ❌ À CRÉER (tool)                               │
+│  ├─ trigger_bazarr_search()                   ❌ À CRÉER (tool)                               │
+│  ├─ Logique timing (récent vs ancien)         ⚠️  À implémenter                               │
+│  └─ CommsBot (Notification)                   ✅ Couvert                                       │
+│                                                                                                  │
+│  Action: 🟡 PRIORITAIRE — Ajouter 2 outils + logique timing                                   │
+│  Priorité: 2️⃣  (3-4 heures d'implémentation)                                                  │
+│                                                                                                  │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+╔═════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                           📊 RÉSUMÉ STATISTIQUE                                               ║
+╠═════════════════════════════════════════════════════════════════════════════════════════════════╣
+║                                                                                                 ║
+║  Couverture moyenne:           ✅ 67% (4 cas sur 5 largement couverts)                        ║
+║                                                                                                 ║
+║  Cas complètement couverts:    2/5   (Cas 1 + 2)                          ✅ 40%              ║
+║  Cas partiellement couverts:   3/5   (Cas 3 + 4 + 5)                      ⚠️  60%             ║
+║                                                                                                 ║
+║  Nouveaux tools à créer:       6     (CAS 3: 2, CAS 4: 2, CAS 5: 2)                          ║
+║  Nouveaux agents à créer:      2     (CAS 3: EstimateBot, StorageBot)                        ║
+║  Nouveaux workflows à créer:   1     (CAS 3: FeasibilityWorkflow)                            ║
+║                                                                                                 ║
+║  Effort total estimé:          ~10-12 heures (spread sur 2 semaines)                          ║
+║  Aucun nouvel agent racine requis ✅ (respects contrainte "pas de nouveau agent")             ║
+║                                                                                                 ║
+╚═════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+╔═════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                         🗺️  TIMELINE D'IMPLÉMENTATION RECOMMANDÉE                             ║
+╠═════════════════════════════════════════════════════════════════════════════════════════════════╣
+║                                                                                                 ║
+║  SEMAINE 1                                                                                     ║
+║  ├─ PHASE 1 (CAS 4 — Plex Sync)           ⏱️  2-3h   🟡 PRIORITAIRE                           ║
+║  │  └─ check_file_on_disk() + trigger_plex_scan()                                             ║
+║  │                                                                                              ║
+║  └─ PHASE 2 (CAS 5 — Audio/Subs)          ⏱️  3-4h   🟡 PRIORITAIRE                           ║
+║     └─ check_audio_subs() + trigger_bazarr_search()                                           ║
+║                                                                                                 ║
+║  SEMAINE 2                                                                                     ║
+║  └─ PHASE 3 (CAS 3 — Requête déraisonnable) ⏱️  4-5h   🔴 CRITIQUE                           ║
+║     └─ 2 tools + 2 agents + 1 workflow + logique multi-turn                                    ║
+║                                                                                                 ║
+║  TOTAL:                                    ~10-12h  (max 1-2 jours si focus full-time)       ║
+║                                                                                                 ║
+╚═════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+╔═════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                              ⚡ PROCHAINES ÉTAPES                                             ║
+╠═════════════════════════════════════════════════════════════════════════════════════════════════╣
+║                                                                                                 ║
+║  1. Lire COVERAGE_ANALYSIS.md  → Comprendre chaque cas en détail                             ║
+║  2. Lire IMPLEMENTATION_PLAN.md → Roadmap précise par phase                                   ║
+║  3. Commencer PHASE 1          → check_file_on_disk() + trigger_plex_scan()                  ║
+║  4. Tester scenario CAS 4      → End-to-end avec mock data                                   ║
+║  5. Puis PHASE 2 + PHASE 3     → Itérer                                                      ║
+║                                                                                                 ║
+╚═════════════════════════════════════════════════════════════════════════════════════════════════╝

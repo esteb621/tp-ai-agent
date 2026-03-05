@@ -1,9 +1,13 @@
 [project]
 name = "agent-ia"
 version = "0.1.0"
-description = "Add your description here"
+description = "Système multi-agents de support média (Plex/Overseerr/Sonarr/Radarr) — Google ADK"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "google-adk>=1.26.0",
+    "google-adk[extensions]>=1.26.0",
+    "python-dotenv>=1.0.0",
+    "radarr-py>=1.2.0",
+    "requests>=2.32.5",
+    "sonarr-py>=1.1.0",
 ]

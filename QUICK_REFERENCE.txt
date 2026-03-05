@@ -1,0 +1,185 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║           🚀 QUICK REFERENCE — Analyse de couverture des cas             ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════════════════════
+ ÉTAT GLOBAL
+═══════════════════════════════════════════════════════════════════════════
+
+Couverture moyenne:  ✅ 67%
+Cas complètement couverts:  2/5 (CAS 1, CAS 2)
+Cas partiellement couverts: 3/5 (CAS 3, CAS 4, CAS 5)
+Effort total: ~10-12 heures pour complétion
+
+═══════════════════════════════════════════════════════════════════════════
+ RÉSUMÉ PAR CAS
+═══════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ CAS 1: TÉLÉCHARGEMENT BLOQUÉ                               ✅ 85% COUVERT │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Flux: User → TriageBot → MaintenanceWorkflow → ArrBot → CommsBot        │
+│ État: ✓ Fonctionne déjà                                                  │
+│ Action: AUCUNE (optionnel: check_torrent_health pour seeders temps réel) │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ CAS 2: BUFFERING/TRANSCODAGE                               ✅ 90% COUVERT │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Flux: User → TriageBot → SupportWorkflow (Parallel)                      │
+│                        → PlexCheckBot ∥ ServerCheckBot                    │
+│ État: ✓ Fonctionne déjà                                                  │
+│ Action: AUCUNE (optionnel: extraire username du contexte)                │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ CAS 3: REQUÊTE DÉRAISONNABLE (ESPACE DISQUE)               ⚠️ 30% COUVERT  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Flux: User: "One Piece intégrale 4K ?"                                   │
+│       → TriageBot: FeasibilityWorkflow (Parallel)                         │
+│       → EstimateBot: "2.5 To" ∥ StorageBot: "800 Go"                     │
+│       → TriageBot: "Acceptez 1080p (400 Go) ?"                           │
+│       → OUI → MaintenanceWorkflow                                         │
+│ Manque: 2 tools + 2 agents + 1 workflow                                  │
+│ Action: 🔴 CRÉER (Priorité 3, 4-5h)                                      │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ CAS 4: PLEX DÉSYNCHRONISÉ (FICHIER ABSENT)                 ⚠️ 70% COUVERT  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Flux: User: "Deadpool est dispo mais pas visible"                        │
+│       → ArrBot: check_file_on_disk() → ✓                                 │
+│       → ArrBot: trigger_plex_scan()                                      │
+│       → CommsBot: "Actualisation lancée (1-2 min)"                       │
+│ Manque: 2 outils simples                                                 │
+│ Action: 🟡 CRÉER (Priorité 1, 2-3h) ← COMMENCEZ PAR LÀ                 │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ CAS 5: AUDIO/SOUS-TITRES MANQUANTS                         ⚠️ 60% COUVERT  │
+├─────────────────────────────────────────────────────────────────────────┤
+│ Flux: User: "The Last of Us en anglais, pas de subs !"                   │
+│       → ArrBot: check_audio_subs() → VO uniquement                       │
+│       → Si récent (<2h): "C'est normal, diffusé il y a 2h"               │
+│       → trigger_bazarr_search() → "5-10 min"                             │
+│ Manque: 2 outils + logique timing                                        │
+│ Action: 🟡 CRÉER (Priorité 2, 3-4h)                                      │
+└─────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════
+ PLAN D'ACTION
+═══════════════════════════════════════════════════════════════════════════
+
+PHASE 1 — CAS 4 (2-3h) 🟡 PRIORITAIRE
+  ├─ Créer: check_file_on_disk()
+  ├─ Créer: trigger_plex_scan()
+  ├─ Ajouter à ArrBot.tools = [...]
+  └─ Tester: "Deadpool est dispo mais pas visible sur Plex"
+
+PHASE 2 — CAS 5 (3-4h) 🟡 PRIORITAIRE
+  ├─ Créer: check_audio_subs()
+  ├─ Créer: trigger_bazarr_search()
+  ├─ Ajouter logique timing (si <2h: "C'est normal")
+  └─ Tester: "The Last of Us en anglais sans subs"
+
+PHASE 3 — CAS 3 (4-5h) 🔴 CRITIQUE
+  ├─ Créer: check_disk_space()
+  ├─ Créer: estimate_media_size()
+  ├─ Créer: EstimateBot agent
+  ├─ Créer: StorageBot agent
+  ├─ Créer: FeasibilityWorkflow (ParallelAgent)
+  ├─ Modifier: TriageBot.instruction (CATEGORY D)
+  └─ Tester: "One Piece intégrale 4K ?"
+
+═══════════════════════════════════════════════════════════════════════════
+ OUTILS À CRÉER (6 au total)
+═══════════════════════════════════════════════════════════════════════════
+
+Priorité 1:
+  ✓ check_file_on_disk(media_name, media_type) → dict
+  ✓ trigger_plex_scan(library="Films") → dict
+
+Priorité 2:
+  ✓ check_audio_subs(media_name, media_id, media_type) → dict
+  ✓ trigger_bazarr_search(media_id, media_type, language) → dict
+
+Priorité 3:
+  ✓ check_disk_space() → dict
+  ✓ estimate_media_size(media_name, quality) → dict
+
+═══════════════════════════════════════════════════════════════════════════
+ AGENTS/WORKFLOWS À CRÉER
+═══════════════════════════════════════════════════════════════════════════
+
+Priorité 3:
+  ✓ EstimateBot (LlmAgent, tool: estimate_media_size)
+  ✓ StorageBot (LlmAgent, tool: check_disk_space)
+  ✓ FeasibilityWorkflow (ParallelAgent: EstimateBot ∥ StorageBot)
+
+═══════════════════════════════════════════════════════════════════════════
+ CONTRAINTE TP
+═══════════════════════════════════════════════════════════════════════════
+
+✅ AUCUN nouvel agent racine requis
+   → TriageBot reste agent racine
+   → EstimateBot & StorageBot = agents spécialisés dans workflow
+
+═══════════════════════════════════════════════════════════════════════════
+ FICHIERS DE RÉFÉRENCE
+═══════════════════════════════════════════════════════════════════════════
+
+📖 COVERAGE_ANALYSIS.md (19 KB)
+   → Analyse détaillée par cas (composants, lacunes, verdict)
+   → À lire pour: Comprendre QUOI et POURQUOI
+
+🛠️ IMPLEMENTATION_PLAN.md (8.8 KB)
+   → Plan d'action + checklist + code snippets
+   → À lire pour: COMMENT implémenter
+
+📊 COVERAGE_MATRIX.txt (24 KB)
+   → Vue visuelle ASCII de la couverture
+   → À lire pour: Vue d'ensemble rapide
+
+📌 README.md (12 KB)
+   → Synthèse exécutive + FAQ
+   → À lire pour: Orientation générale
+
+═══════════════════════════════════════════════════════════════════════════
+ OÙ COMMENCER ?
+═══════════════════════════════════════════════════════════════════════════
+
+1️⃣  Lire ce fichier (QUICK_REFERENCE.txt) — 5 min ✓ Vous êtes ici
+
+2️⃣  Lire COVERAGE_ANALYSIS.md — 20 min
+    → Comprendre les détails de chaque cas
+
+3️⃣  Lire IMPLEMENTATION_PLAN.md — 10 min
+    → Voir exactement quoi faire
+
+4️⃣  COMMENCER PHASE 1 (CAS 4) — 2-3h
+    → Implémenter check_file_on_disk() + trigger_plex_scan()
+    → Tester end-to-end
+
+5️⃣  PHASE 2 (CAS 5) — 3-4h
+    → Implémenter outils audio/subs
+
+6️⃣  PHASE 3 (CAS 3) — 4-5h
+    → Implémenter la logique de requête déraisonnable
+
+═══════════════════════════════════════════════════════════════════════════
+ TEMPS TOTAL
+═══════════════════════════════════════════════════════════════════════════
+
+Lecture documentation:    35 min
+PHASE 1 (CAS 4):          2-3h
+PHASE 2 (CAS 5):          3-4h
+PHASE 3 (CAS 3):          4-5h
+─────────────────────────────
+TOTAL:                    ~10-12h (faisable en 1-2 jours full-time)
+
+═══════════════════════════════════════════════════════════════════════════
+
+🎯 RECOMMANDATION: Commencez par PHASE 1 (CAS 4) — simple & impactful
+🚀 Prêt ? Lisez IMPLEMENTATION_PLAN.md et commencez !
+
+═══════════════════════════════════════════════════════════════════════════
