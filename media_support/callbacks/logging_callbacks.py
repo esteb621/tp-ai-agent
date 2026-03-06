@@ -22,6 +22,7 @@ VALID_TOOLS = {
     "search_and_replace_release", 
     "get_available_releases",
     "download_release",
+    "comms_bot_tool"
 }
 def on_tool_start(
     tool: BaseTool,

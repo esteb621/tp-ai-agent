@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  agent-ia:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agent-ia
+    restart: unless-stopped
+    # Charge automatiquement les clés API (Sonarr, Radarr, Tautulli)
+    env_file:
+      - .env
+    environment:
+      - OLLAMA_HOST=http://localhost:11434

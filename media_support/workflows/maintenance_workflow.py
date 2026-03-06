@@ -27,10 +27,9 @@ maintenance_workflow = SequentialAgent(
     description=(
         "Workflow de maintenance proactive. "
         "Exécute séquentiellement ArrBot (analyse + réparation des downloads bloqués) "
-        "puis CommsBot (notification Discord des utilisateurs concernés)."
+        "puis CommsBot en tant qu'outil (notification Discord des utilisateurs concernés)."
     ),
     sub_agents=[
-        arr_bot,
-        comms_bot    # Étape 1 : Analyse et réparation — génère maintenance_report et appelle comms_bot
+        arr_bot
     ],
 )

@@ -47,13 +47,16 @@ comms_bot = LlmAgent(
 
         ---
 
-        ## INPUT
-        - The report is in `maintenance_report` (session state)
-        - It contains: media name, what broke, what was done
-        - Ignore any JSON structure or technical field names — just extract the meaning
+        ## INPUT DATA
+        (This is provided in the message you receive from the user or the workflow)
 
         ---
+        ## INPUT HANDLING
+        - You may receive the report as raw JSON or unstructured text.
+        - DO NOT mention that the data is JSON. DO NOT analyze the structure (e.g. "The error_message field is null").
+        - Pluck ONLY the problem and resolution out of the input and construct your message normally.
 
+        ---
         ## OUTPUT RULES
         - Plain text only
         - No JSON, no code, no tool calls
