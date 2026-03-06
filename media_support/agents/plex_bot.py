@@ -10,7 +10,15 @@ from media_support.callbacks.logging_callbacks import on_tool_start, on_agent_en
 # ─────────────────────────────────────────────────────────────────────────────
 # Modèle : Mistral via Ollama (local, sans clé API)
 # ─────────────────────────────────────────────────────────────────────────────
-MISTRAL_MODEL = LiteLlm(model="ollama/mistral:latest")
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+MISTRAL_MODEL = LiteLlm(
+    model="ollama/mistral:latest",
+    api_base=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+)
 
 
 # CommsBot en tant qu'outil
@@ -34,12 +42,12 @@ plex_check_bot = LlmAgent(
 
     | Tool name (exact)            | Arguments                     | Purpose                                  |
     |------------------------------|-------------------------------|------------------------------------------|
-    | check_plex_playback          | user: str                     | Get the current playback status          |
+    | check_plex_playback          | media_name: str               | Get the current playback status for a specific media |
     | CommsBot                     | request: str                  | Send the final message to the user       |
 
     ## PROCEDURE — 2 STEPS IN ORDER
     
-    1. Call `check_plex_playback` pour diagnostiquer le flux Plex de l'utilisateur (avec "utilisateur_plex" si non spécifié).
+    1. Call `check_plex_playback` pour diagnostiquer le flux Plex du média demandé par l'utilisateur (avec le nom du média).
     2. Format your diagnosis into a clear text summary and call `CommsBot` with this text as the `request` argument.
     
     CRITICAL: ONCE YOU HAVE CALLED `CommsBot`, YOU MUST OUTPUT EXACTLY THE TEXT "STATUS: DONE" TO FINISH YOUR TURN.

@@ -17,6 +17,12 @@ from google.adk.tools.base_tool import BaseTool
 from google.adk.tools.tool_context import ToolContext
 from google.adk.agents.llm_agent import LlmResponse
 
+VALID_TOOLS = {
+    "get_stuck_downloads",
+    "search_and_replace_release", 
+    "get_available_releases",
+    "download_release",
+}
 def on_tool_start(
     tool: BaseTool,
     args: dict[str, Any],
@@ -37,16 +43,13 @@ def on_tool_start(
         Optional[dict]: Retourner None = laisser l'outil s'exécuter normalement.
                         Retourner un dict = court-circuiter l'outil avec ce résultat.
     """
-    agent_name = getattr(tool_context, "agent_name", "Agent inconnu")
-    print("\n" + "🔧" * 30)
-    print(f"[CALLBACK] ⚙️  OUTIL DÉMARRÉ")
-    print(f"  ├─ Agent    : {agent_name}")
-    print(f"  ├─ Outil    : {tool.name}")
-    print(f"  └─ Arguments: {args}")
-    print("🔧" * 30)
-
-    # Retourner None = ne pas court-circuiter l'exécution de l'outil
-    return None
+    if tool.name not in VALID_TOOLS:
+        # Retourne une fausse réponse qui force l'agent à se corriger
+        return {
+            "error": f"Tool '{tool.name}' does not exist.",
+            "instruction": f"You MUST only use one of: {', '.join(VALID_TOOLS)}. Try again with a valid tool."
+        }
+    return None  # Laisse passer si l'outil est valide
 
 
 def on_agent_end(callback_context: CallbackContext) -> None:

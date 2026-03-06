@@ -10,4 +10,5 @@ dependencies = [
     "radarr-py>=1.2.0",
     "requests>=2.32.5",
     "sonarr-py>=1.1.0",
+    "tautulli>=1.0.0",
 ]

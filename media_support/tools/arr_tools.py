@@ -16,7 +16,7 @@ from sonarr.api.missing_api import MissingApi as SonarrMissingApi
 from sonarr.api.release_api import ReleaseApi as SonarrReleaseApi
 from sonarr.api.series_api import SeriesApi as SonarrSeriesApi
 from sonarr.models.command_resource import CommandResource as SonarrCommandResource
-
+from sonarr.models.release_resource import ReleaseResource
 import radarr
 from radarr.api.queue_api import QueueApi as RadarrQueueApi
 from radarr.api.command_api import CommandApi as RadarrCommandApi
@@ -29,6 +29,7 @@ SONARR_URL = os.getenv("SONARR_URL", "http://localhost:8989")
 SONARR_API_KEY = os.getenv("SONARR_API_KEY", "")
 RADARR_URL = os.getenv("RADARR_URL", "http://localhost:7878")
 RADARR_API_KEY = os.getenv("RADARR_API_KEY", "")
+APP_MODE = os.getenv("APP_MODE", "mock").lower()
 
 # Global configuration objects for Sonarr and Radarr
 SONARR_CONFIG = sonarr.Configuration(host=SONARR_URL)
@@ -45,6 +46,33 @@ def get_stuck_downloads(media_type: str = "all") -> dict:
     Récupère les médias bloqués (Queue) ou manquants (Wanted) depuis Sonarr/Radarr.
     Supporte le filtrage par regex sur le nom du média.
     """
+    if APP_MODE == "mock":
+        print(f"DEBUG: get_stuck_downloads (MOCK) - media_type={media_type}")
+        return {
+            "status": "success",
+            "downloads": [
+                {
+                    "id": 1,
+                    "media_type": "serie",
+                    "media_name": "Severance - S01E01",
+                    "status": "Warning",
+                    "tracked_status": "Warning",
+                    "status_messages": ["Download stuck at 99% - No seeders"],
+                    "source": "queue"
+                },
+                {
+                    "id": 2,
+                    "media_type": "film",
+                    "media_name": "Dune: Part Two",
+                    "status": "Missing",
+                    "tracked_status": "Wanted",
+                    "status_messages": ["Movie is missing from disk"],
+                    "source": "wanted"
+                }
+            ],
+            "error_message": None
+        }
+
     print(f"DEBUG: get_stuck_downloads - media_type={media_type}")
     stuck = []
     has_errors = False
@@ -63,7 +91,6 @@ def get_stuck_downloads(media_type: str = "all") -> dict:
                 # 1. Stuck in Queue
                 queue_api = SonarrQueueApi(api_client)
                 queue_page = queue_api.get_queue(page_size=100)
-                print(queue_page[0] if getattr(queue_page, "records", []) else "Queue empty")
                 
                 for item in getattr(queue_page, "records", []):
                     series_id = getattr(item, "series_id", None)
@@ -190,6 +217,14 @@ def get_available_releases(media_id: int, media_type: str) -> dict:
     """
     Recherche les releases disponibles sur les indexeurs pour un ID donné.
     """
+    if APP_MODE == "mock":
+        return {
+            "status": "success",
+            "releases": [
+                {"guid": "mock-1", "title": "Scream.7.S01E01.1080p.WEB.H264-GRP", "size": 2500000000, "seeders": 45, "leechers": 5, "quality": "1080p", "indexer": "MockIndexer"},
+                {"guid": "mock-2", "title": "Scream.7.S01E01.720p.WEB.H264-GRP", "size": 1200000000, "seeders": 12, "leechers": 2, "quality": "720p", "indexer": "MockIndexer"}
+            ]
+        }
     releases = []
     try:
         if media_type == "serie":
@@ -230,16 +265,16 @@ def download_release(guid: str, media_type: str) -> dict:
     """
     Lance le téléchargement d'une release spécifique via son GUID.
     """
+    if APP_MODE == "mock":
+        return {"status": "success", "message": f"(MOCK) Release grabbed: {guid}"}
     try:
         if media_type == "serie":
             with sonarr.ApiClient(SONARR_CONFIG) as api_client:
                 release_api = SonarrReleaseApi(api_client)
-                from sonarr.models.release_resource import ReleaseResource
                 release_api.create_release(ReleaseResource(guid=guid))
         else:
             with radarr.ApiClient(RADARR_CONFIG) as api_client:
                 release_api = RadarrReleaseApi(api_client)
-                from radarr.models.release_resource import ReleaseResource
                 release_api.create_release(ReleaseResource(guid=guid))
         
         return {"status": "success", "message": f"Release grabbed: {guid}"}
@@ -251,6 +286,9 @@ def search_and_replace_release(media_name: str) -> bool:
     """
     Déclenche une recherche automatique (SeriesSearch/MoviesSearch) via CommandApi.
     """
+    if APP_MODE == "mock":
+        print(f"(MOCK) Search and replace for: {media_name}")
+        return True
     if not media_name: return False
     try:
         with radarr.ApiClient(RADARR_CONFIG) as api_client:

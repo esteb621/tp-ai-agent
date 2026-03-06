@@ -20,7 +20,15 @@ from media_support.callbacks.logging_callbacks import on_agent_end, on_model_res
 # Modèle : Mistral via Ollama (local, sans clé API)
 # Prérequis : ollama pull mistral  +  ollama serve
 # ─────────────────────────────────────────────────────────────────────────────
-MISTRAL_MODEL = LiteLlm(model="ollama/mistral:latest")
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+MODEL = LiteLlm(
+    model="ollama/mistral:latest",
+    api_base=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TriageBot — Agent racine / agent d'accueil
@@ -28,7 +36,7 @@ MISTRAL_MODEL = LiteLlm(model="ollama/mistral:latest")
 # ─────────────────────────────────────────────────────────────────────────────
 root_agent = LlmAgent(
     name="TriageBot",
-    model=MISTRAL_MODEL,
+    model=MODEL,
     description=(
         "Agent d'accueil du support média. "
         "Trie les demandes entre maintenance (téléchargements bloqués/en attente) "

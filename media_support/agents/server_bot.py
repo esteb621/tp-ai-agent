@@ -3,7 +3,15 @@ from google.adk.models.lite_llm import LiteLlm
 from ..callbacks import logging_callbacks
 from google.genai.types import GenerateContentConfig
 
-MISTRAL_MODEL = LiteLlm(model="ollama/mistral:latest")
+import os
+from dotenv import load_dotenv
+from media_support.tools import plex_tools
+load_dotenv()
+
+MISTRAL_MODEL = LiteLlm(
+    model="ollama/mistral:latest",
+    api_base=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+)
 
 server_check_bot = LlmAgent(
     name="ServerCheckBot",
@@ -17,11 +25,7 @@ server_check_bot = LlmAgent(
     A user has reported an issue. Without any additional tools available,
     perform a simulated server health check and return a report including:
 
-    1. **Overall server status** (simulated):
-    - CPU: 45% usage (normal)
-    - RAM: 12 GB / 32 GB used (normal)
-    - Plex storage: 8.2 TB / 12 TB available (normal)
-    - Active streams: 3 (2 direct play, 1 transcode)
+    1. **Overall server status**: 
 
     2. **Analysis**: The server is operational. Performance appears within normal range.
 
@@ -35,5 +39,6 @@ server_check_bot = LlmAgent(
     STOP COMPLETELY AFTER REPORTING THE METRICS.
 """,
     output_key="server_diagnostic",
+    tools=[plex_tools.check_server_health],
     after_agent_callback=logging_callbacks.on_agent_end,
 )

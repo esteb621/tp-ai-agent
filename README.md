@@ -42,8 +42,6 @@ L'architecture repose sur plusieurs agents ayant chacun un rôle très précis :
 ### 4. **CommsBot** (L'Agent de Communication)
 
 - **Rôle** : C'est la face visible de l'IA. Il récupère les rapports techniques bruts générés par les autres robots (par exemple: "Erreur 500 sur le serveur", ou "Release rempacée avec succès") et formule une réponse claire, polie et adaptée pour l'utilisateur.
-- **Outils utilisés** :
-  - `send_discord_dm` : Envoie un message direct via Discord à l'utilisateur ciblé.
 
 ---
 

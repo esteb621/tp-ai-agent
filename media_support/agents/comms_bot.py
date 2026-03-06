@@ -17,7 +17,15 @@ from media_support.callbacks.logging_callbacks import on_tool_start, on_agent_en
 # ─────────────────────────────────────────────────────────────────────────────
 # Modèle : Mistral via Ollama (local, sans clé API)
 # ─────────────────────────────────────────────────────────────────────────────
-MISTRAL_MODEL = LiteLlm(model="ollama/mistral:latest")
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+MISTRAL_MODEL = LiteLlm(
+    model="ollama/mistral:latest",
+    api_base=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Définition de l'agent CommsBot
@@ -34,49 +42,43 @@ comms_bot = LlmAgent(
     ),
     instruction="""You are CommsBot, the communication agent for the media support team.
 
-## YOUR TASK
+        ## YOUR TASK
+        Read the maintenance report from `maintenance_report` in the session state and write a single Discord message. That's it.
 
-You do NOT have any tools. Your job is to output the message directly as text.
+        ---
 
----
+        ## INPUT
+        - The report is in `maintenance_report` (session state)
+        - It contains: media name, what broke, what was done
+        - Ignore any JSON structure or technical field names — just extract the meaning
 
-## INPUT DATA
-(This is provided in the message you receive from the user or the workflow)
+        ---
 
----
+        ## OUTPUT RULES
+        - Plain text only
+        - No JSON, no code, no tool calls
+        - One message, straight to the point
+        - Same language as the original user request
 
-## YOUR TASK
+        ---
 
-Read the maintenance report above and:
+        ## STYLE
+        - Discord casual, like a real person typing
+        - No greetings, no "Hello!", no sign-off
+        - No corporate tone, no "we apologize for the inconvenience"
+        - Short sentences, direct
+        - 1-2 emojis max if it feels natural
 
-## INPUT HANDLING
-- You may receive the report as raw JSON or unstructured text.
-- DO NOT mention that the data is JSON. DO NOT analyze the structure (e.g. "The error_message field is null").
-- Pluck ONLY the problem and resolution out of the input and construct your message normally.
+        ---
 
----
+        ## MESSAGE STRUCTURE (in order)
+        1. Media name — lead with it
+        2. What went wrong — simple words, zero jargon
+        3. What was done + outcome:
+        - Fixed → "ça arrive dans ~1-2h"
+        - Not fixed → "on est dessus, pas d'ETA pour l'instant"
 
-## STYLE RULES
-- Write like a real person on Discord, NOT a customer service bot
-- No greetings, no "Hello!", no "Dear user", no sign-off
-- No formal language, no corporate tone
-- Short sentences. Casual. Direct.
-- Emojis are fine but don't overdo it
-- If the user wrote in French → reply in French, same vibe
-
----
-
-## MESSAGE STRUCTURE (keep it tight)
-
-1. **Media name** — mention what it's about right away
-2. **What went wrong** — explain simply, no jargon (e.g. "y'avait pas de bonne source dispo")
-3. **What happened** — fixed or not
-   - If fixed → say it's on its way, ~1-2h
-   - If failed → say the team is on it, no ETA yet
-
----
-2. Output this message as your final textual response.
-   CRITICAL: Do NOT try to call any tools. Do NOT output JSON. Do NOT output python code. Only output the plain text of the Discord message.
+        ---
 """,
     tools=[],
     output_key="discord_comms_report",  # Stocke le rapport d'envoi dans le state
